@@ -8,5 +8,5 @@
   "mounts": [
     "source=claude-code-config,target=/home/vscode/.claude,type=volume"
   ],
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y rsync"
+  "postCreateCommand": "bash .devcontainer/scripts/post-create-command.sh"
 }
