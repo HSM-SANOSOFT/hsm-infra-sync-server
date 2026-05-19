@@ -1,5 +1,5 @@
 #!/bin/bash
 set -e
 
-sudo apt-get update
-sudo apt-get install -y rsync
+# Post-create user-level setup (no sudo — runs as vscode).
+# System packages (rsync, etc.) are installed in the Dockerfile.

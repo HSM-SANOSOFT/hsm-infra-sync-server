@@ -27,6 +27,17 @@ $RECYCLE.BIN/
 *.suo
 *.sw?
 
+# Credentials and secrets
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.yaml
+secrets.yml
+sync-config.json
+sync-config.*.json
+
 # Sync tool runtime
 *.bak
 *.sync

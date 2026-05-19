@@ -1,12 +1,14 @@
 {
   "name": "hsm-infra-sync-server",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "remoteUser": "vscode",
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "mounts": [
-    "source=claude-code-config,target=/home/vscode/.claude,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
   ],
-  "postCreateCommand": "bash .devcontainer/scripts/post-create-command.sh"
+  "postCreateCommand": "bash ${containerWorkspaceFolder}/.devcontainer/scripts/post-create-command.sh"
 }
