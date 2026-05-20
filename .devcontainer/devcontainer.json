@@ -5,6 +5,7 @@
   },
   "remoteUser": "vscode",
   "features": {
+    "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "mounts": [

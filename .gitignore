@@ -38,7 +38,17 @@ secrets.yml
 sync-config.json
 sync-config.*.json
 
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
 # Sync tool runtime
 *.bak
 *.sync
 .sync-state/
+.hsm-sync-state

@@ -1,0 +1,84 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    # Skip the version-bump commit that this workflow pushes back to main
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: windows-latest
+    permissions:
+      contents: write  # needed to push the version bump and create the release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so git tag creation works correctly
+
+      - name: Configure git
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Reads pyproject.toml, increments patch (0.1.0 → 0.1.1), writes it back.
+      # Done before the build so the version baked into the exe matches the release tag.
+      - name: Bump patch version
+        id: version
+        shell: bash
+        run: |
+          new_version=$(python scripts/bump-version.py)
+          echo "version=${new_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Tests run before the build — a failing test aborts the workflow before
+      # anything is committed or released.
+      - name: Run tests
+        shell: bash
+        run: uv run pytest -q
+
+      - name: Build Windows executable
+        shell: bash
+        run: |
+          uv run pyinstaller \
+            --onefile \
+            --name hsm-sync \
+            --collect-all python_dotenv \
+            src/hsm_sync/main.py
+
+      # Only reached when tests pass and the build succeeds.
+      # [skip ci] in the message prevents this push from re-triggering the workflow.
+      - name: Commit version bump and push tag
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git add pyproject.toml
+          git commit -m "chore: bump version to v${VERSION} [skip ci]"
+          git tag "v${VERSION}"
+          git push origin main
+          git push origin "v${VERSION}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            Self-contained Windows executable — no Python or uv required on Server A.
+
+            **Deploy to Server A:**
+            1. Download `hsm-sync.exe` to `C:\hsm-sync\`
+            2. Copy `.env.example` → `C:\hsm-sync\.env` and fill in all values
+            3. Register the scheduled task:
+               ```
+               schtasks /Create /XML taskscheduler\hsm-sync.xml /TN "HSM Sync" /RU "DOMAIN\deploy" /RP
+               ```
+          files: dist/hsm-sync.exe
