@@ -51,6 +51,8 @@ jobs:
             --onefile \
             --name hsm-sync \
             --collect-all python_dotenv \
+            --collect-all paramiko \
+            --collect-all cryptography \
             src/hsm_sync/main.py
 
       # Only reached when tests pass and the build succeeds.

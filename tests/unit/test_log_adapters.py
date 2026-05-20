@@ -4,16 +4,16 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from subprocess import CompletedProcess
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import paramiko
 import pytest
 
 from hsm_sync.adapters.file_log_adapter import FileLogAdapter
 from hsm_sync.adapters.ssh_log_adapter import SshLogAdapter
 from hsm_sync.core.models import FileChange, LogEntry, SyncResult
 
-KEY = Path("/home/deploy/.ssh/id_rsa")
+KEY = Path("C:/Users/deploy/.ssh/id_rsa")
 
 
 def _make_entry(days_ago: int = 0) -> LogEntry:
@@ -28,9 +28,6 @@ def _make_entry(days_ago: int = 0) -> LogEntry:
         ),
     )
 
-
-def _completed(returncode=0) -> CompletedProcess:
-    return CompletedProcess(args=[], returncode=returncode, stdout="", stderr="")
 
 
 class TestFileLogAdapter:
@@ -88,6 +85,16 @@ class TestFileLogAdapter:
         assert not tmp.exists()
 
 
+def _make_ssh_mock(exit_code: int = 0) -> MagicMock:
+    """Return a mock SSHClient whose exec_command reports exit_code."""
+    client = MagicMock()
+    stdin = MagicMock()
+    stdout = MagicMock()
+    stdout.channel.recv_exit_status.return_value = exit_code
+    client.exec_command.return_value = (stdin, stdout, MagicMock())
+    return client
+
+
 class TestSshLogAdapter:
     def _adapter(self) -> SshLogAdapter:
         return SshLogAdapter(
@@ -97,42 +104,49 @@ class TestSshLogAdapter:
             remote_log_path=r"C:\Users\deploy\hsm-sync.log",
         )
 
-    @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
-    def test_write_entry_calls_ssh_with_correct_options(self, mock_run):
-        mock_run.return_value = _completed()
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_uses_reject_policy(self, mock_cls):
+        mock_cls.return_value = _make_ssh_mock()
         self._adapter().write_entry(_make_entry())
-        cmd = mock_run.call_args[0][0]
-        assert "ssh" in cmd
-        assert "BatchMode=yes" in cmd
-        assert "StrictHostKeyChecking=yes" in cmd
-        assert "deploy@192.168.1.100" in cmd
+        policy = mock_cls.return_value.set_missing_host_key_policy.call_args[0][0]
+        assert isinstance(policy, paramiko.RejectPolicy)
 
-    @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
-    def test_write_entry_appends_to_remote_path(self, mock_run):
-        mock_run.return_value = _completed()
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_connects_with_key_no_agent(self, mock_cls):
+        mock_cls.return_value = _make_ssh_mock()
         self._adapter().write_entry(_make_entry())
-        cmd = mock_run.call_args[0][0]
-        remote_cmd = cmd[-1]
-        # Windows cmd.exe: type CON reads stdin and >> appends to file
-        assert "type CON >>" in remote_cmd
-        assert r"C:\Users\deploy\hsm-sync.log" in remote_cmd
+        kw = mock_cls.return_value.connect.call_args[1]
+        assert kw["key_filename"] == str(KEY)
+        assert kw["look_for_keys"] is False
+        assert kw["allow_agent"] is False
 
-    @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
-    def test_json_passed_via_stdin_not_shell_arg(self, mock_run):
-        mock_run.return_value = _completed()
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_remote_command_appends_to_path(self, mock_cls):
+        mock_cls.return_value = _make_ssh_mock()
         self._adapter().write_entry(_make_entry())
-        kwargs = mock_run.call_args[1]
-        assert "input" in kwargs
-        # Content is valid JSON
-        json.loads(kwargs["input"].strip())
+        cmd = mock_cls.return_value.exec_command.call_args[0][0]
+        assert "type CON >>" in cmd
+        assert r"C:\Users\deploy\hsm-sync.log" in cmd
 
-    @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
-    def test_ssh_failure_no_exception(self, mock_run):
-        mock_run.return_value = _completed(returncode=255)
-        # Should not raise
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_json_written_to_stdin(self, mock_cls):
+        client = _make_ssh_mock()
+        mock_cls.return_value = client
         self._adapter().write_entry(_make_entry())
+        written = client.exec_command.return_value[0].write.call_args[0][0]
+        json.loads(written.strip())  # Must be valid JSON
 
-    @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
-    def test_prune_old_entries_makes_no_subprocess_call(self, mock_run):
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_ssh_exception_no_raise(self, mock_cls):
+        mock_cls.return_value.connect.side_effect = paramiko.SSHException("refused")
+        self._adapter().write_entry(_make_entry())  # Should not raise
+
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_nonzero_exit_no_raise(self, mock_cls):
+        mock_cls.return_value = _make_ssh_mock(exit_code=1)
+        self._adapter().write_entry(_make_entry())  # Should not raise
+
+    @patch("hsm_sync.adapters.ssh_log_adapter.paramiko.SSHClient")
+    def test_prune_makes_no_connection(self, mock_cls):
         self._adapter().prune_old_entries()
-        mock_run.assert_not_called()
+        mock_cls.assert_not_called()

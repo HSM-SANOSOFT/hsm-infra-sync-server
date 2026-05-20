@@ -5,7 +5,7 @@ import sys
 
 from hsm_sync.adapters.file_log_adapter import FileLogAdapter
 from hsm_sync.adapters.git_adapter import GitAdapter
-from hsm_sync.adapters.rsync_adapter import RsyncAdapter
+from hsm_sync.adapters.sftp_adapter import SftpAdapter
 from hsm_sync.adapters.ssh_log_adapter import SshLogAdapter
 from hsm_sync.config import load_config
 from hsm_sync.core.sync_service import SyncService
@@ -22,7 +22,7 @@ def main() -> None:
     is_first_run = not state_file.exists() or state_file.read_text().strip() == ""
 
     git = GitAdapter(config.httdocs_path)
-    transfer = RsyncAdapter(
+    transfer = SftpAdapter(
         source_path=config.httdocs_path,
         remote_host=config.remote_host,
         remote_user=config.remote_user,

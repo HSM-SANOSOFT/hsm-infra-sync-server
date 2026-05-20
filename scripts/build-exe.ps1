@@ -4,10 +4,11 @@
 #   uv installed: https://docs.astral.sh/uv/getting-started/installation/
 #   Run this script from the repo root.
 #
-# Output: dist\hsm-sync.exe  (~20-40 MB, no external dependencies)
+# Output: dist\hsm-sync.exe  (~40-60 MB, no external dependencies)
+# Server A needs: git, OpenSSH Server enabled on Server B — nothing else.
 #
-# Deploy: copy dist\hsm-sync.exe to Server A alongside .env, then register
-# taskscheduler\hsm-sync.xml with Task Scheduler.
+# Deploy: copy dist\hsm-sync.exe and .env to the same folder on Server A,
+# then register taskscheduler\hsm-sync.xml with Task Scheduler.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -20,6 +21,8 @@ uv run pyinstaller `
     --onefile `
     --name hsm-sync `
     --collect-all python_dotenv `
+    --collect-all paramiko `
+    --collect-all cryptography `
     src\hsm_sync\main.py
 
 if ($LASTEXITCODE -ne 0) {
@@ -34,5 +37,5 @@ Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Copy $exe to Server A (e.g. C:\hsm-sync\hsm-sync.exe)"
 Write-Host "  2. Copy .env.example to Server A as C:\hsm-sync\.env and fill in values"
-Write-Host "  3. Import taskscheduler\hsm-sync.xml into Task Scheduler"
+Write-Host "  3. Import taskscheduler\hsm-sync.xml into Task Scheduler:"
 Write-Host "     schtasks /Create /XML taskscheduler\hsm-sync.xml /TN 'HSM Sync' /RU 'DOMAIN\deploy' /RP"

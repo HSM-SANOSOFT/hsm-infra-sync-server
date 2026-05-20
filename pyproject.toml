@@ -2,7 +2,7 @@
 name = "hsm-sync"
 version = "0.1.2"
 requires-python = ">=3.11"
-dependencies = ["python-dotenv>=1.0"]
+dependencies = ["python-dotenv>=1.0", "paramiko>=3.0"]
 
 [project.scripts]
 hsm-sync = "hsm_sync.main:main"
