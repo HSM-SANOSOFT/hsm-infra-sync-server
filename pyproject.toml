@@ -8,7 +8,7 @@ dependencies = ["python-dotenv>=1.0"]
 hsm-sync = "hsm_sync.main:main"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "pyinstaller>=6.0"]
 
 [build-system]
 requires = ["hatchling"]

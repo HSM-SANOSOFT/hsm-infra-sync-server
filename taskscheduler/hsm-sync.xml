@@ -3,14 +3,18 @@
   HSM Sync — Windows Task Scheduler definition
   Runs hsm-sync every 15 minutes, catching up missed runs after downtime.
 
+  Deployment model: build hsm-sync.exe once on a Windows machine (see scripts\build-exe.ps1),
+  copy the resulting dist\hsm-sync.exe to Server A alongside .env. No Python or uv required
+  on the server — the executable is fully self-contained.
+
   Import with:
     schtasks /Create /XML taskscheduler\hsm-sync.xml /TN "HSM Sync" /RU "DOMAIN\deploy" /RP
   Or via Task Scheduler GUI: Action > Import Task...
 
   Before importing:
-    1. Edit <Command> to the full path of uv.exe on Server A
-    2. Edit <WorkingDirectory> to the folder where this repo is cloned
-    3. Edit <UserId> to the Windows account that will run the task
+    1. Edit <Command> to the full path of hsm-sync.exe on Server A
+    2. Edit <WorkingDirectory> to the folder containing hsm-sync.exe and .env (same folder)
+    3. Edit <UserId> to the Windows account that owns the SSH key
 -->
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
 
@@ -69,10 +73,13 @@
 
   <Actions Context="Author">
     <Exec>
-      <!-- Edit these three values to match your Server A deployment -->
-      <Command>C:\Users\deploy\.local\bin\uv.exe</Command>
-      <Arguments>run hsm-sync</Arguments>
-      <WorkingDirectory>C:\Users\deploy\hsm-sync</WorkingDirectory>
+      <!--
+        <Command>: full path to hsm-sync.exe on Server A
+        <WorkingDirectory>: the folder that contains BOTH hsm-sync.exe AND .env
+        No <Arguments> needed — the executable is self-contained.
+      -->
+      <Command>C:\hsm-sync\hsm-sync.exe</Command>
+      <WorkingDirectory>C:\hsm-sync</WorkingDirectory>
     </Exec>
   </Actions>
 
