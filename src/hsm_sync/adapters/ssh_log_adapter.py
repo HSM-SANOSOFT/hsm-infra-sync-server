@@ -34,7 +34,7 @@ class SshLogAdapter:
                 "-o",
                 "StrictHostKeyChecking=yes",
                 f"{self._user}@{self._host}",
-                f"cat >> '{self._remote_log_path}'",
+                f'type CON >> "{self._remote_log_path}"',
             ],
             input=json_line + "\n",
             text=True,

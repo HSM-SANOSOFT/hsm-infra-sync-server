@@ -94,7 +94,7 @@ class TestSshLogAdapter:
             host="192.168.1.100",
             user="deploy",
             key_path=KEY,
-            remote_log_path="/home/deploy/hsm-sync.log",
+            remote_log_path=r"C:\Users\deploy\hsm-sync.log",
         )
 
     @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
@@ -113,8 +113,9 @@ class TestSshLogAdapter:
         self._adapter().write_entry(_make_entry())
         cmd = mock_run.call_args[0][0]
         remote_cmd = cmd[-1]
-        assert "cat >>" in remote_cmd
-        assert "/home/deploy/hsm-sync.log" in remote_cmd
+        # Windows cmd.exe: type CON reads stdin and >> appends to file
+        assert "type CON >>" in remote_cmd
+        assert r"C:\Users\deploy\hsm-sync.log" in remote_cmd
 
     @patch("hsm_sync.adapters.ssh_log_adapter.subprocess.run")
     def test_json_passed_via_stdin_not_shell_arg(self, mock_run):
