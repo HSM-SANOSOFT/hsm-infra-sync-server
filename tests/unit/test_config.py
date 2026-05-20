@@ -9,11 +9,11 @@ import pytest
 from hsm_sync.config import load_config
 
 _BASE_ENV = {
-    "HTTDOCS_PATH": "/var/www/httdocs",
+    "HOST_FOLDER_TO_SYNC_PATH": "/var/www/httdocs",
     "REMOTE_HOST": "192.168.1.100",
     "REMOTE_USER": "deploy",
-    "REMOTE_PATH": "/var/www/httdocs",
-    "SSH_KEY_PATH": "/home/deploy/.ssh/id_rsa",
+    "REMOTE_FOLDER_TO_SYNC_PATH": "/var/www/httdocs",
+    "SSH_PRIVATE_KEY_PATH": "/home/deploy/.ssh/id_rsa",
     "REMOTE_LOG_PATH": "/home/deploy/hsm-sync.log",
 }
 
@@ -27,17 +27,25 @@ class TestLoadConfig:
     def test_all_required_vars_set(self):
         with _with_env():
             config = load_config()
-        assert config.httdocs_path == Path("/var/www/httdocs")
+        assert config.host_folder_to_sync_path == Path("/var/www/httdocs")
         assert config.remote_host == "192.168.1.100"
         assert config.remote_user == "deploy"
-        assert config.remote_path == "/var/www/httdocs"
-        assert config.ssh_key_path == Path("/home/deploy/.ssh/id_rsa")
+        assert config.remote_folder_to_sync_path == "/var/www/httdocs"
+        assert config.ssh_private_key_path == Path("/home/deploy/.ssh/id_rsa")
         assert config.remote_log_path == "/home/deploy/hsm-sync.log"
 
     def test_missing_remote_host_raises(self):
         env = {k: v for k, v in _BASE_ENV.items() if k != "REMOTE_HOST"}
         with patch.dict(os.environ, env, clear=True):
             with pytest.raises(ValueError, match="Missing required env var: REMOTE_HOST"):
+                load_config()
+
+    def test_missing_host_folder_raises(self):
+        env = {k: v for k, v in _BASE_ENV.items() if k != "HOST_FOLDER_TO_SYNC_PATH"}
+        with patch.dict(os.environ, env, clear=True):
+            with pytest.raises(
+                ValueError, match="Missing required env var: HOST_FOLDER_TO_SYNC_PATH"
+            ):
                 load_config()
 
     def test_log_retention_days_default_is_7(self):
@@ -55,16 +63,21 @@ class TestLoadConfig:
             config = load_config()
         assert config.rsync_excludes == []
 
-    def test_ssh_key_path_nonexistent_loads_without_error(self):
-        with _with_env(SSH_KEY_PATH="/nonexistent/path/id_rsa"):
+    def test_ssh_private_key_path_nonexistent_loads_without_error(self):
+        with _with_env(SSH_PRIVATE_KEY_PATH="/nonexistent/path/id_rsa"):
             config = load_config()
-        assert config.ssh_key_path == Path("/nonexistent/path/id_rsa")
+        assert config.ssh_private_key_path == Path("/nonexistent/path/id_rsa")
+
+    def test_host_log_path_default(self):
+        with _with_env():
+            config = load_config()
+        assert config.host_log_path == Path("logs/sync.log")
 
     def test_state_file_defaults_adjacent_to_log_parent(self):
-        with _with_env(LOCAL_LOG_PATH="logs/sync.log"):
+        with _with_env(HOST_LOG_PATH="logs/sync.log"):
             config = load_config()
         assert config.state_file_path.name == ".hsm-sync-state"
-        assert config.state_file_path.parent == config.local_log_path.parent
+        assert config.state_file_path.parent == config.host_log_path.parent
 
     def test_state_file_overridden_by_env(self):
         with _with_env(STATE_FILE_PATH="/custom/state"):

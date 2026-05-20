@@ -21,20 +21,20 @@ def main() -> None:
     state_file = config.state_file_path
     is_first_run = not state_file.exists() or state_file.read_text().strip() == ""
 
-    git = GitAdapter(config.httdocs_path)
+    git = GitAdapter(config.host_folder_to_sync_path)
     transfer = SftpAdapter(
-        source_path=config.httdocs_path,
+        source_path=config.host_folder_to_sync_path,
         remote_host=config.remote_host,
         remote_user=config.remote_user,
-        remote_path=config.remote_path,
-        ssh_key_path=config.ssh_key_path,
+        remote_path=config.remote_folder_to_sync_path,
+        ssh_key_path=config.ssh_private_key_path,
         extra_excludes=config.rsync_excludes,
     )
-    a_log = FileLogAdapter(config.local_log_path, config.log_retention_days)
+    a_log = FileLogAdapter(config.host_log_path, config.log_retention_days)
     b_log = SshLogAdapter(
         host=config.remote_host,
         user=config.remote_user,
-        key_path=config.ssh_key_path,
+        key_path=config.ssh_private_key_path,
         remote_log_path=config.remote_log_path,
     )
 
@@ -46,7 +46,7 @@ def main() -> None:
         print(f"ERROR: sync failed: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    head = _get_head_hash(config.httdocs_path)
+    head = _get_head_hash(config.host_folder_to_sync_path)
     state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(head + "\n")
     sys.exit(0)
