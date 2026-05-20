@@ -1,6 +1,6 @@
 [project]
 name = "hsm-sync"
-version = "0.1.4"
+version = "0.1.5"
 requires-python = ">=3.11"
 dependencies = ["python-dotenv>=1.0", "paramiko>=3.0"]
 
