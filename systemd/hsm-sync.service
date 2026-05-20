@@ -1,0 +1,17 @@
+[Unit]
+Description=HSM Sync — one-shot httdocs sync from A to B
+After=network.target
+
+[Service]
+Type=oneshot
+# Edit these paths to match your deployment
+User=deploy
+WorkingDirectory=/home/deploy/hsm-sync
+ExecStart=/home/deploy/.local/bin/uv run hsm-sync
+# .env is loaded by the script itself (python-dotenv); do NOT add EnvironmentFile=
+# here — systemd's EnvironmentFile parser conflicts with python-dotenv format.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
