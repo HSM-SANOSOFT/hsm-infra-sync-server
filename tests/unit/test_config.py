@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -26,11 +27,11 @@ class TestLoadConfig:
     def test_all_required_vars_set(self):
         with _with_env():
             config = load_config()
-        assert str(config.httdocs_path) == "/var/www/httdocs"
+        assert config.httdocs_path == Path("/var/www/httdocs")
         assert config.remote_host == "192.168.1.100"
         assert config.remote_user == "deploy"
         assert config.remote_path == "/var/www/httdocs"
-        assert str(config.ssh_key_path) == "/home/deploy/.ssh/id_rsa"
+        assert config.ssh_key_path == Path("/home/deploy/.ssh/id_rsa")
         assert config.remote_log_path == "/home/deploy/hsm-sync.log"
 
     def test_missing_remote_host_raises(self):
@@ -57,7 +58,7 @@ class TestLoadConfig:
     def test_ssh_key_path_nonexistent_loads_without_error(self):
         with _with_env(SSH_KEY_PATH="/nonexistent/path/id_rsa"):
             config = load_config()
-        assert str(config.ssh_key_path) == "/nonexistent/path/id_rsa"
+        assert config.ssh_key_path == Path("/nonexistent/path/id_rsa")
 
     def test_state_file_defaults_adjacent_to_log_parent(self):
         with _with_env(LOCAL_LOG_PATH="logs/sync.log"):
@@ -68,4 +69,4 @@ class TestLoadConfig:
     def test_state_file_overridden_by_env(self):
         with _with_env(STATE_FILE_PATH="/custom/state"):
             config = load_config()
-        assert str(config.state_file_path) == "/custom/state"
+        assert config.state_file_path == Path("/custom/state")
